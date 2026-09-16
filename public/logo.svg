@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- OncoAgora emblem: an agora/amphitheater seen from above — tiered arcs
+       gathering around a central point (the learner). -->
+  <g transform="translate(60,64)">
+    <path d="M-46,8 A46,46 0 0 1 46,8" fill="none" stroke="#2c3e8c" stroke-width="9" stroke-linecap="round"/>
+    <path d="M-33,14 A33,33 0 0 1 33,14" fill="none" stroke="#0ea5a6" stroke-width="9" stroke-linecap="round"/>
+    <path d="M-20,20 A20,20 0 0 1 20,20" fill="none" stroke="#f59e0b" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="0" cy="24" r="9" fill="#1e2a66"/>
+  </g>
+</svg>
