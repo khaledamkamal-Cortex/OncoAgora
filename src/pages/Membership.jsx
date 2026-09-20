@@ -157,8 +157,8 @@ function Dashboard({ member }) {
                   </div>
                 </form>
               ) : (
-                <div className="card">
-                  <table className="data" style={{ width: '100%' }}>
+                <div className="card kv-wrap">
+                  <table className="data kv" style={{ width: '100%' }}>
                     <tbody>
                       <tr><th>Email</th><td>{member.email}</td></tr>
                       <tr><th>Phone</th><td>{member.phone || '—'}</td></tr>

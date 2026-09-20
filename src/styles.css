@@ -55,7 +55,7 @@ a:hover { text-decoration: underline; }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
 /* ---------- Buttons ---------- */
-.btn { display: inline-block; padding: 10px 20px; border-radius: 8px; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; text-decoration: none !important; transition: background 0.15s, transform 0.05s; font-family: var(--font); }
+.btn { display: inline-block; padding: 10px 20px; border-radius: 8px; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; text-decoration: none !important; transition: background 0.15s, transform 0.05s; font-family: var(--font); white-space: nowrap; flex-shrink: 0; }
 .btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--purple); color: #fff; }
 .btn-primary:hover { background: var(--purple-dark); }
@@ -125,8 +125,25 @@ table.data th { background: var(--purple-light); color: var(--purple-dark); text
 table.data td { padding: 10px 14px; border-top: 1px solid var(--border); vertical-align: top; }
 
 /* Long unbroken text (emails, URLs) must wrap instead of overflowing its box.
-   `anywhere` also lets tables shrink to their container when sizing. */
-.card, table.data td { overflow-wrap: anywhere; }
+   `anywhere` also lets tables shrink to their container when sizing; buttons
+   opt out via .btn { white-space: nowrap }. */
+.card { overflow-wrap: break-word; }
+table.data td { overflow-wrap: anywhere; }
+
+/* Key-value tables (label column + value column): keep the label column at its
+   content width so the value column gets all remaining space. */
+table.data.kv th { width: 1%; }
+table.data.kv td { width: 99%; }
+
+/* In a narrow card (.kv-wrap watches its own width), stack each label above
+   its value so long values (emails) get the full row. */
+.kv-wrap { container-type: inline-size; }
+@container (max-width: 430px) {
+  table.data.kv tr { display: block; border-top: 1px solid var(--border); }
+  table.data.kv tr:first-child { border-top: none; }
+  table.data.kv th, table.data.kv td { display: block; width: 100%; border-top: none; padding: 2px 14px 8px; }
+  table.data.kv th { background: none; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 14px 0; }
+}
 
 /* ---------- LMS ---------- */
 .progress-bar { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
