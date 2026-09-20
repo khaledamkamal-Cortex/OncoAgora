@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Courses, Members, Progress } from '../lib/store'
+import { toEmbedUrl } from '../lib/video'
 import { useStore } from '../lib/useStore'
 
 const KIND_ICON = { video: ['li-video', '▶'], pdf: ['li-pdf', '📄'], article: ['li-article', '📖'], quiz: ['li-quiz', '❓'] }
@@ -85,7 +86,7 @@ function LessonView({ lesson, course, member, onDone }) {
       </div>
 
       {lesson.kind === 'video' && (lesson.url
-        ? <div className="video-frame"><iframe src={lesson.url} title={lesson.title} allowFullScreen /></div>
+        ? <div className="video-frame"><iframe src={toEmbedUrl(lesson.url)} title={lesson.title} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
         : <div className="alert alert-info">🎬 The recording for this lesson will be added soon.</div>)}
       {lesson.kind === 'article' && <div style={{ whiteSpace: 'pre-line', fontSize: '1rem' }}>{lesson.body}</div>}
       {lesson.kind === 'pdf' && <div className="alert alert-info">📄 PDF document ({lesson.pages || '?'} pages). In production this renders the uploaded PDF from Supabase Storage.</div>}

@@ -232,11 +232,11 @@ function LessonForm({ course, module, lesson, onDone }) {
 
       {form.kind === 'video' && (
         <div className="form-row">
-          <Field label="YouTube embed URL"><input value={form.url} onChange={set('url')} placeholder="https://www.youtube.com/embed/…" /></Field>
+          <Field label="Video URL (YouTube or Vimeo)"><input value={form.url} onChange={set('url')} placeholder="https://youtu.be/… or https://vimeo.com/…" /></Field>
           <Field label="Duration"><input value={form.duration} onChange={set('duration')} placeholder="08:20" /></Field>
         </div>
       )}
-      {form.kind === 'video' && <p className="form-note">Use the <b>embed</b> URL (youtube.com/embed/VIDEO_ID), not the watch URL.</p>}
+      {form.kind === 'video' && <p className="form-note">Paste any YouTube or Vimeo link — watch page, share link or embed URL. It is converted to the player format automatically (unlisted Vimeo links with a hash work too).</p>}
 
       {form.kind === 'pdf' && (
         <div className="form-row">
