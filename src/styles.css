@@ -124,6 +124,10 @@ table.data { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 table.data th { background: var(--purple-light); color: var(--purple-dark); text-align: left; padding: 10px 14px; white-space: nowrap; }
 table.data td { padding: 10px 14px; border-top: 1px solid var(--border); vertical-align: top; }
 
+/* Long unbroken text (emails, URLs) must wrap instead of overflowing its box.
+   `anywhere` also lets tables shrink to their container when sizing. */
+.card, table.data td { overflow-wrap: anywhere; }
+
 /* ---------- LMS ---------- */
 .progress-bar { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
 .progress-bar > div { height: 100%; background: linear-gradient(90deg, var(--teal), var(--green)); border-radius: 999px; transition: width 0.3s; }
