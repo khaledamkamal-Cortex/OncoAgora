@@ -206,4 +206,8 @@ footer.site .bottom { border-top: 1px solid #374151; padding: 16px 0; font-size:
 @media print {
   .navbar, footer.site, .no-print, .demo-banner { display: none !important; }
   body { background: #fff; }
+  /* When printing a certificate, print ONLY the certificate. */
+  body.print-cert * { visibility: hidden !important; }
+  body.print-cert .certificate-area, body.print-cert .certificate-area * { visibility: visible !important; }
+  body.print-cert .certificate-area { position: absolute !important; left: 0; top: 0; width: 100%; margin: 0; }
 }

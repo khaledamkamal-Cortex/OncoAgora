@@ -65,6 +65,21 @@ alter table modules add column if not exists cme_points numeric default 0;
 alter table lessons add column if not exists hidden boolean default false;
 alter table lessons add column if not exists pass_pct int;
 
+-- Certificates: per-course availability toggle, uploaded template image and
+-- vertical position of the member name written onto it.
+alter table courses add column if not exists cert_enabled boolean default true;
+alter table courses add column if not exists cert_name_y int;
+create table if not exists cert_templates (
+  course_id uuid primary key references courses(id) on delete cascade,
+  data_url text not null,
+  updated_at timestamptz default now()
+);
+alter table cert_templates enable row level security;
+drop policy if exists "read cert templates" on cert_templates;
+create policy "read cert templates" on cert_templates for select using (true);
+drop policy if exists "admin write cert templates" on cert_templates;
+create policy "admin write cert templates" on cert_templates for all using (is_admin()) with check (is_admin());
+
 -- ---------- LMS progress ----------
 create table if not exists progress (
   id uuid primary key default gen_random_uuid(),

@@ -81,6 +81,19 @@ export async function setProgress(memberId, courseId, lessonId, done) {
   else await supabase.from('progress').delete().eq('member_id', memberId).eq('lesson_id', lessonId)
 }
 
+// ---------------- Certificate templates ----------------
+
+export async function getCertTemplate(courseId) {
+  const { data } = await supabase.from('cert_templates').select('data_url').eq('course_id', courseId).maybeSingle()
+  return data?.data_url || null
+}
+export function setCertTemplate(courseId, dataUrl) {
+  return supabase.from('cert_templates').upsert({ course_id: courseId, data_url: dataUrl, updated_at: new Date().toISOString() })
+}
+export function removeCertTemplate(courseId) {
+  return supabase.from('cert_templates').delete().eq('course_id', courseId)
+}
+
 // ---------------- Admin content writes ----------------
 // Each returns the raw Supabase result; store.js reloads affected slices afterward.
 
@@ -91,7 +104,7 @@ export const db = {
 
   // Courses
   addCourse: (c) => supabase.from('courses').insert({ title: c.title, level: c.level, summary: c.summary, banner: c.banner, hours: c.hours, cme_points: c.cme_points || 0, sort: 0 }),
-  updateCourse: (id, patch) => supabase.from('courses').update(pick(patch, ['title', 'level', 'summary', 'banner', 'hours', 'cme_points', 'hidden'])).eq('id', id),
+  updateCourse: (id, patch) => supabase.from('courses').update(pick(patch, ['title', 'level', 'summary', 'banner', 'hours', 'cme_points', 'hidden', 'cert_enabled', 'cert_name_y'])).eq('id', id),
   removeCourse: (id) => supabase.from('courses').delete().eq('id', id),
 
   // Modules

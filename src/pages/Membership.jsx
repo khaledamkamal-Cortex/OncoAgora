@@ -129,7 +129,7 @@ function Dashboard({ member }) {
                       <Link to={`/courses/${c.id}`} className="btn btn-ghost btn-sm">{pct > 0 ? 'Continue' : 'Start'}</Link>
                     </div>
                     <div className="progress-bar" style={{ marginTop: 10 }}><div style={{ width: `${pct}%` }} /></div>
-                    <div className="meta" style={{ marginTop: 4 }}>{pct}% complete{Number(c.cme_points) > 0 ? ` · ${Number(c.cme_points)} CME` : ''}{pct === 100 ? ' · 🎓 Certificate available' : ''}</div>
+                    <div className="meta" style={{ marginTop: 4 }}>{pct}% complete{Number(c.cme_points) > 0 ? ` · ${Number(c.cme_points)} CME` : ''}{pct === 100 && c.cert_enabled !== false ? ' · 🎓 Certificate available' : ''}</div>
                   </div>
                 )
               })}

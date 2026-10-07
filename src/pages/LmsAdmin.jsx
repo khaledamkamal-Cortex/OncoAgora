@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Courses } from '../lib/store'
+import { useState, useEffect } from 'react'
+import { Courses, Certs } from '../lib/store'
+import { fileToTemplateDataUrl } from '../lib/certs'
 import { useStore } from '../lib/useStore'
 
 const BANNERS = [
@@ -85,8 +86,33 @@ function CourseEditor({ course, onDeleted }) {
   const [editMeta, setEditMeta] = useState(false)
   const [meta, setMeta] = useState(course)
   const [newModule, setNewModule] = useState('')
+  const [tpl, setTpl] = useState(undefined)      // certificate template preview
+  const [tplBusy, setTplBusy] = useState(false)
   const setM = (k) => (e) => setMeta({ ...meta, [k]: e.target.value })
-  const saveMeta = (e) => { e.preventDefault(); Courses.update(course.id, { ...meta, hours: Number(meta.hours), cme_points: Number(meta.cme_points) || 0 }); setEditMeta(false) }
+  const saveMeta = (e) => {
+    e.preventDefault()
+    Courses.update(course.id, { ...meta, hours: Number(meta.hours), cme_points: Number(meta.cme_points) || 0, cert_name_y: Number(meta.cert_name_y) || 50 })
+    setEditMeta(false)
+  }
+
+  useEffect(() => {
+    if (!editMeta) return
+    let on = true
+    Certs.get(course.id).then((t) => { if (on) setTpl(t) }).catch(() => { if (on) setTpl(null) })
+    return () => { on = false }
+  }, [editMeta, course.id])
+
+  const uploadTpl = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setTplBusy(true)
+    try {
+      const dataUrl = await fileToTemplateDataUrl(file)
+      await Certs.set(course.id, dataUrl)
+      setTpl(dataUrl)
+    } catch (err) { alert(err.message) } finally { setTplBusy(false); e.target.value = '' }
+  }
+  const removeTpl = async () => { if (confirm('Remove the certificate template? The default styled certificate will be used.')) { await Certs.remove(course.id); setTpl(null) } }
 
   const addModule = (e) => { e.preventDefault(); if (!newModule.trim()) return; Courses.addModule(course.id, newModule.trim()); setNewModule('') }
 
@@ -114,6 +140,35 @@ function CourseEditor({ course, onDeleted }) {
             <Field label="CME points (course total)"><input type="number" min="0" step="0.5" value={meta.cme_points ?? 0} onChange={setM('cme_points')} /></Field>
             <Field label="Summary"><textarea rows={2} value={meta.summary} onChange={setM('summary')} /></Field>
             <Field label="Banner"><select value={meta.banner} onChange={setM('banner')}>{BANNERS.map(([n, v]) => <option key={v} value={v}>{n}</option>)}</select></Field>
+
+            <div className="card" style={{ background: 'var(--bg)' }}>
+              <h3 style={{ marginBottom: 8 }}>🎓 Certificate</h3>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 500, marginBottom: 10 }}>
+                <input type="checkbox" style={{ width: 'auto' }} checked={meta.cert_enabled !== false}
+                       onChange={(e) => setMeta({ ...meta, cert_enabled: e.target.checked })} />
+                Certificate available on course completion
+              </label>
+              {meta.cert_enabled !== false && (
+                <>
+                  <Field label="Certificate template (optional image — the member's name, CME points and date are written onto it)">
+                    <input type="file" accept="image/*" onChange={uploadTpl} disabled={tplBusy} />
+                  </Field>
+                  {tplBusy && <p className="form-note">Uploading…</p>}
+                  {tpl && (
+                    <div style={{ margin: '10px 0' }}>
+                      <img src={tpl} alt="Template preview" style={{ maxWidth: 260, borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+                      <button type="button" className="btn btn-danger btn-sm" style={{ marginTop: 6 }} onClick={removeTpl}>Remove template</button>
+                    </div>
+                  )}
+                  {tpl === null && <p className="form-note">No template uploaded — the built-in styled certificate is used.</p>}
+                  <Field label="Name position on template (% from top)">
+                    <input type="number" min="5" max="95" value={meta.cert_name_y ?? 50} onChange={setM('cert_name_y')} />
+                  </Field>
+                  <p className="form-note">Template uploads/removals apply immediately; the toggle and name position apply on Save.</p>
+                </>
+              )}
+            </div>
+
             <button className="btn btn-primary btn-sm" type="submit">Save changes</button>
           </form>
         )}

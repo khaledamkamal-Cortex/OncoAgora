@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Courses, Members, Progress } from '../lib/store'
+import { Courses, Members, Progress, Certs } from '../lib/store'
 import { toEmbedUrl } from '../lib/video'
+import { printCertificate } from '../lib/certs'
 import { useStore } from '../lib/useStore'
 
 const KIND_ICON = { video: ['li-video', '▶'], pdf: ['li-pdf', '📄'], article: ['li-article', '📖'], quiz: ['li-quiz', '❓'] }
@@ -39,7 +40,7 @@ export default function Course() {
 
       <section className="section">
         <div className="container">
-          {completion === 100 && member && <Certificate name={member.name} course={course.title} cme={Number(course.cme_points) || 0} />}
+          {completion === 100 && member && course.cert_enabled !== false && <Certificate name={member.name} course={course} />}
           <div className="lms-layout">
             <aside className="lms-sidebar">
               {course.modules.map((mod) => (
@@ -146,22 +147,47 @@ function Quiz({ lesson, onPass }) {
   )
 }
 
-function Certificate({ name, course, cme }) {
+function Certificate({ name, course }) {
+  const cme = Number(course.cme_points) || 0
+  const [tpl, setTpl] = useState(undefined) // undefined = loading, null = none
+  useEffect(() => {
+    let on = true
+    Certs.get(course.id).then((t) => { if (on) setTpl(t) }).catch(() => { if (on) setTpl(null) })
+    return () => { on = false }
+  }, [course.id])
+
+  const issued = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const nameY = Math.min(95, Math.max(5, Number(course.cert_name_y) || 50))
+
   return (
     <div style={{ marginBottom: 28 }}>
-      <div className="certificate">
-        <div style={{ fontSize: '0.8rem', letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase' }}>OncoAgora</div>
-        <div style={{ fontSize: '2.4rem' }}>🎓</div>
-        <div style={{ fontSize: '0.9rem', letterSpacing: 2, color: 'var(--muted)' }}>CERTIFICATE OF COMPLETION</div>
-        <p style={{ marginTop: 16 }}>This certifies that</p>
-        <div className="cname">{name}</div>
-        <p>has successfully completed the course</p>
-        <h1 style={{ fontSize: '1.3rem' }}>{course}</h1>
-        {cme > 0 && <p style={{ marginTop: 10, fontWeight: 700, color: 'var(--purple-dark)' }}>{cme} CME point{cme === 1 ? '' : 's'} awarded</p>}
-        <p style={{ color: 'var(--muted)', marginTop: 10 }}>Issued {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-      </div>
+      {tpl ? (
+        // Uploaded template: member name, CME and date are written onto it.
+        <div className="certificate-area" style={{ position: 'relative', maxWidth: 900, margin: '0 auto' }}>
+          <img src={tpl} alt="Certificate" style={{ width: '100%', display: 'block', borderRadius: 6 }} />
+          <div style={{ position: 'absolute', left: '5%', right: '5%', top: `${nameY}%`, transform: 'translateY(-50%)', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 700, color: '#1e2a66', fontSize: 'clamp(16px, 3.6vw, 34px)', lineHeight: 1.2 }}>{name}</div>
+            <div style={{ color: '#334', fontSize: 'clamp(10px, 1.7vw, 16px)', marginTop: 4 }}>
+              {cme > 0 ? `${cme} CME point${cme === 1 ? '' : 's'} · ` : ''}{issued}
+            </div>
+          </div>
+        </div>
+      ) : (
+        // No template (or still loading): the built-in styled certificate.
+        <div className="certificate certificate-area">
+          <div style={{ fontSize: '0.8rem', letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase' }}>OncoAgora</div>
+          <div style={{ fontSize: '2.4rem' }}>🎓</div>
+          <div style={{ fontSize: '0.9rem', letterSpacing: 2, color: 'var(--muted)' }}>CERTIFICATE OF COMPLETION</div>
+          <p style={{ marginTop: 16 }}>This certifies that</p>
+          <div className="cname">{name}</div>
+          <p>has successfully completed the course</p>
+          <h1 style={{ fontSize: '1.3rem' }}>{course.title}</h1>
+          {cme > 0 && <p style={{ marginTop: 10, fontWeight: 700, color: 'var(--purple-dark)' }}>{cme} CME point{cme === 1 ? '' : 's'} awarded</p>}
+          <p style={{ color: 'var(--muted)', marginTop: 10 }}>Issued {issued}</p>
+        </div>
+      )}
       <div style={{ textAlign: 'center', marginTop: 14 }} className="no-print">
-        <button className="btn btn-gold" onClick={() => window.print()}>🖨 Print / Save certificate</button>
+        <button className="btn btn-gold" onClick={printCertificate}>🖨 Print / Save certificate</button>
       </div>
     </div>
   )

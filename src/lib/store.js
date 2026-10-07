@@ -13,7 +13,7 @@ const SB = supabaseEnabled
 const KEY = 'oncoagora-v1'
 
 function emptyState() {
-  return { courses: [], members: [], session: null, progress: {}, admin: false }
+  return { courses: [], members: [], session: null, progress: {}, admin: false, certTemplates: {} }
 }
 function demoDefaults() {
   return { ...emptyState(), courses: seedCourses }
@@ -172,6 +172,21 @@ export const Courses = {
         }) }
       }); persist()
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Certificate templates (per course; data-URL images)
+// ---------------------------------------------------------------------------
+export const Certs = {
+  get: async (courseId) => SB ? api.getCertTemplate(courseId) : (state.certTemplates?.[courseId] || null),
+  set: async (courseId, dataUrl) => {
+    if (SB) { const { error } = await api.setCertTemplate(courseId, dataUrl); logErr(error) }
+    else { state.certTemplates = { ...(state.certTemplates || {}), [courseId]: dataUrl }; persist() }
+  },
+  remove: async (courseId) => {
+    if (SB) { const { error } = await api.removeCertTemplate(courseId); logErr(error) }
+    else { const t = { ...(state.certTemplates || {}) }; delete t[courseId]; state.certTemplates = t; persist() }
   }
 }
 
