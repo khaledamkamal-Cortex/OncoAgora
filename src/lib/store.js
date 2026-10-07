@@ -43,7 +43,12 @@ export function getState() { return state }
 
 function uid(prefix) { return prefix + '-' + Math.random().toString(36).slice(2, 9) }
 function today() { return new Date().toISOString().slice(0, 10) }
-function logErr(e) { if (e) console.error('[store]', e.message || e) }
+// For content writes: surface failures to the admin instead of failing silently.
+function logErr(e) {
+  if (!e) return
+  console.error('[store]', e.message || e)
+  if (typeof window !== 'undefined') window.alert('Save failed: ' + (e.message || e))
+}
 
 // ---------------------------------------------------------------------------
 // Boot: in live mode, pull courses (and the signed-in member) into state.
@@ -54,7 +59,7 @@ export async function bootstrap() {
     state.courses = await api.loadCourses()
     const member = await api.fetchCurrentMember()
     if (member) await afterLogin(member)
-  } catch (e) { logErr(e) }
+  } catch (e) { console.error('[store]', e) }
   persist()
 }
 
@@ -66,7 +71,7 @@ async function afterLogin(member) {
   rows.forEach((r) => { map[`${member.email}::${r.course_id}::${r.lesson_id}`] = true })
   state.progress = map
   if (member.isAdmin) {
-    try { state.members = await api.db.loadMembers() } catch (e) { logErr(e) }
+    try { state.members = await api.db.loadMembers() } catch (e) { console.error('[store]', e) }
   }
 }
 
@@ -220,7 +225,7 @@ export const Progress = {
     const k = Progress.key(email, courseId, lessonId)
     if (done) state.progress[k] = true; else delete state.progress[k]
     state.progress = { ...state.progress }; persist()
-    if (SB && state.session) { try { await api.setProgress(state.session.id, courseId, lessonId, done) } catch (e) { logErr(e) } }
+    if (SB && state.session) { try { await api.setProgress(state.session.id, courseId, lessonId, done) } catch (e) { console.error('[store]', e) } }
   },
   courseCompletion: (email, course) => {
     const lessons = Courses.lessons(course)

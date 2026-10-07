@@ -167,7 +167,7 @@ function ModuleEditor({ course, module, index, total }) {
       <div style={{ padding: 14, borderTop: '1px solid var(--border)' }}>
         {adding
           ? <LessonForm course={course} module={module} onDone={() => setAdding(false)} />
-          : <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>+ Add lesson</button>}
+          : <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>+ Add lesson (video · PDF · article · quiz)</button>}
       </div>
     </div>
   )
