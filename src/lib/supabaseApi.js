@@ -55,6 +55,21 @@ export async function signIn(email, password) {
 
 export async function signOut() { await supabase.auth.signOut() }
 
+export async function requestPasswordReset(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
+  if (error) throw new Error(friendly(error.message))
+}
+
+export async function updatePassword(password) {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw new Error(friendly(error.message))
+  return fetchCurrentMember()
+}
+
+export function onPasswordRecovery(cb) {
+  supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') cb() })
+}
+
 export async function fetchCurrentMember() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null

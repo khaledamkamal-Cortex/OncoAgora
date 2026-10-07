@@ -6,14 +6,14 @@
 //    the same in-memory `state`, reads stay synchronous, and every mutation is
 //    written through to Supabase and then the affected slice is reloaded.
 import { seedCourses } from './seed'
-import { supabaseEnabled } from './supabase'
+import { supabaseEnabled, hadRecoveryHash } from './supabase'
 import * as api from './supabaseApi'
 
 const SB = supabaseEnabled
 const KEY = 'oncoagora-v1'
 
 function emptyState() {
-  return { courses: [], members: [], session: null, progress: {}, admin: false, certTemplates: {} }
+  return { courses: [], members: [], session: null, progress: {}, admin: false, certTemplates: {}, passwordRecovery: false }
 }
 function demoDefaults() {
   return { ...emptyState(), courses: seedCourses }
@@ -55,6 +55,8 @@ function logErr(e) {
 // ---------------------------------------------------------------------------
 export async function bootstrap() {
   if (!SB) return
+  if (hadRecoveryHash) state.passwordRecovery = true
+  api.onPasswordRecovery(() => { state.passwordRecovery = true; persist() })
   try {
     state.courses = await api.loadCourses()
     const member = await api.fetchCurrentMember()
@@ -215,6 +217,17 @@ export const Members = {
   logout: async () => {
     if (SB) { await api.signOut(); state.session = null; state.admin = false; state.progress = {}; persist(); return }
     state.session = null; persist()
+  },
+  requestPasswordReset: async (email) => {
+    if (!SB) throw new Error('Password reset works on the live site only (demo accounts are stored in this browser).')
+    await api.requestPasswordReset(email)
+  },
+  updatePassword: async (password) => {
+    if (!SB) throw new Error('Password reset works on the live site only (demo accounts are stored in this browser).')
+    const member = await api.updatePassword(password)
+    if (member) await afterLogin(member)
+    state.passwordRecovery = false
+    persist()
   },
   update: async (email, patch) => {
     if (SB) { await api.updateMemberProfile(email, patch); if (state.session) state.session = { ...state.session, ...patch }; persist(); return }

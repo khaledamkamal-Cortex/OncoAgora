@@ -54,7 +54,10 @@ function AuthForms() {
               <div><label>Full name</label><input value={form.name} onChange={set('name')} required placeholder="Dr. …" /></div>
             )}
             <div><label>Email</label><input type="email" value={form.email} onChange={set('email')} required placeholder="you@example.com" /></div>
-            <div><label>Password</label><input type="password" value={form.password} onChange={set('password')} required minLength={4} /></div>
+            <div>
+              <label>Password</label><input type="password" value={form.password} onChange={set('password')} required minLength={4} />
+              {mode === 'login' && <p className="form-note" style={{ marginTop: 4 }}><Link to="/reset-password">Forgot password?</Link></p>}
+            </div>
             {mode === 'register' && (
               <>
                 <div className="form-row">
