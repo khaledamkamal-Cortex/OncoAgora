@@ -89,7 +89,9 @@ function AuthForms() {
 function Dashboard({ member }) {
   const [edit, setEdit] = useState(false)
   const [form, setForm] = useState(member)
-  const courses = Courses.all()
+  const courses = Courses.visible()
+  const cmeEarned = courses.reduce((sum, c) =>
+    Progress.courseCompletion(member.email, c) === 100 ? sum + (Number(c.cme_points) || 0) : sum, 0)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const save = async (e) => { e.preventDefault(); await Members.update(member.email, form); setEdit(false) }
 
@@ -111,6 +113,13 @@ function Dashboard({ member }) {
             <div>
               <h2 className="section-title" style={{ fontSize: '1.3rem' }}>My learning</h2>
               <div className="section-title-bar" />
+              <div className="card" style={{ marginBottom: 14, background: 'var(--purple-light)', border: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.6rem' }}>🎓</span>
+                <div>
+                  <b>{cmeEarned} CME point{cmeEarned === 1 ? '' : 's'} earned</b>
+                  <div className="meta" style={{ margin: 0 }}>Complete every lesson and pass the quizzes of a course to earn its CME points.</div>
+                </div>
+              </div>
               {courses.map((c) => {
                 const pct = Progress.courseCompletion(member.email, c)
                 return (
@@ -120,7 +129,7 @@ function Dashboard({ member }) {
                       <Link to={`/courses/${c.id}`} className="btn btn-ghost btn-sm">{pct > 0 ? 'Continue' : 'Start'}</Link>
                     </div>
                     <div className="progress-bar" style={{ marginTop: 10 }}><div style={{ width: `${pct}%` }} /></div>
-                    <div className="meta" style={{ marginTop: 4 }}>{pct}% complete{pct === 100 ? ' · 🎓 Certificate available' : ''}</div>
+                    <div className="meta" style={{ marginTop: 4 }}>{pct}% complete{Number(c.cme_points) > 0 ? ` · ${Number(c.cme_points)} CME` : ''}{pct === 100 ? ' · 🎓 Certificate available' : ''}</div>
                   </div>
                 )
               })}

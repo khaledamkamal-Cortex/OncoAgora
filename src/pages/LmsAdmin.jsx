@@ -54,12 +54,12 @@ export default function LmsAdmin() {
 }
 
 function CourseForm({ onCreate }) {
-  const blank = { title: '', level: 'Beginner', hours: 4, summary: '', banner: BANNERS[0][1] }
+  const blank = { title: '', level: 'Beginner', hours: 4, cme_points: 0, summary: '', banner: BANNERS[0][1] }
   const [form, setForm] = useState(blank)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const submit = (e) => {
     e.preventDefault()
-    Courses.add({ ...form, hours: Number(form.hours), modules: [] })
+    Courses.add({ ...form, hours: Number(form.hours), cme_points: Number(form.cme_points) || 0, modules: [] })
     const created = Courses.all()[0]
     setForm(blank)
     if (created) onCreate(created.id)
@@ -72,6 +72,7 @@ function CourseForm({ onCreate }) {
         <Field label="Level"><select value={form.level} onChange={set('level')}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></Field>
         <Field label="Hours"><input type="number" min="1" value={form.hours} onChange={set('hours')} /></Field>
       </div>
+      <Field label="CME points (course total)"><input type="number" min="0" step="0.5" value={form.cme_points} onChange={set('cme_points')} /></Field>
       <Field label="Summary"><textarea rows={2} value={form.summary} onChange={set('summary')} /></Field>
       <Field label="Banner"><select value={form.banner} onChange={set('banner')}>{BANNERS.map(([n, v]) => <option key={v} value={v}>{n}</option>)}</select></Field>
       <div style={{ height: 28, borderRadius: 8, background: form.banner }} />
@@ -85,7 +86,7 @@ function CourseEditor({ course, onDeleted }) {
   const [meta, setMeta] = useState(course)
   const [newModule, setNewModule] = useState('')
   const setM = (k) => (e) => setMeta({ ...meta, [k]: e.target.value })
-  const saveMeta = (e) => { e.preventDefault(); Courses.update(course.id, { ...meta, hours: Number(meta.hours) }); setEditMeta(false) }
+  const saveMeta = (e) => { e.preventDefault(); Courses.update(course.id, { ...meta, hours: Number(meta.hours), cme_points: Number(meta.cme_points) || 0 }); setEditMeta(false) }
 
   const addModule = (e) => { e.preventDefault(); if (!newModule.trim()) return; Courses.addModule(course.id, newModule.trim()); setNewModule('') }
 
@@ -94,12 +95,13 @@ function CourseEditor({ course, onDeleted }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <div>
-            <h3 style={{ margin: 0 }}>{course.title}</h3>
-            <div className="meta">{course.level} · {course.modules.length} modules · {Courses.lessons(course).length} lessons</div>
+            <h3 style={{ margin: 0 }}>{course.title} {course.hidden && <span className="badge badge-red">hidden</span>}</h3>
+            <div className="meta">{course.level} · {course.modules.length} modules · {Courses.lessons(course).length} lessons{Number(course.cme_points) > 0 ? ` · ${Number(course.cme_points)} CME` : ''}</div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button className="btn btn-blue btn-sm" onClick={() => Courses.update(course.id, { hidden: !course.hidden })}>{course.hidden ? 'Show' : 'Hide'}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setMeta(course); setEditMeta(!editMeta) }}>{editMeta ? 'Close' : 'Edit'}</button>
-            <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete this entire course?')) { Courses.remove(course.id); onDeleted() } }}>Delete</button>
+            <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete this entire course? (Tip: use Hide to take it offline without losing it.)')) { Courses.remove(course.id); onDeleted() } }}>Delete</button>
           </div>
         </div>
         {editMeta && (
@@ -109,6 +111,7 @@ function CourseEditor({ course, onDeleted }) {
               <Field label="Level"><select value={meta.level} onChange={setM('level')}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></Field>
               <Field label="Hours"><input type="number" value={meta.hours} onChange={setM('hours')} /></Field>
             </div>
+            <Field label="CME points (course total)"><input type="number" min="0" step="0.5" value={meta.cme_points ?? 0} onChange={setM('cme_points')} /></Field>
             <Field label="Summary"><textarea rows={2} value={meta.summary} onChange={setM('summary')} /></Field>
             <Field label="Banner"><select value={meta.banner} onChange={setM('banner')}>{BANNERS.map(([n, v]) => <option key={v} value={v}>{n}</option>)}</select></Field>
             <button className="btn btn-primary btn-sm" type="submit">Save changes</button>
@@ -131,23 +134,26 @@ function CourseEditor({ course, onDeleted }) {
 function ModuleEditor({ course, module, index, total }) {
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(module.title)
+  const [cme, setCme] = useState(module.cme_points ?? 0)
   const [adding, setAdding] = useState(false)
 
   return (
     <div className="module">
       <div className="module-head">
         {renaming ? (
-          <form onSubmit={(e) => { e.preventDefault(); Courses.updateModule(course.id, module.id, { title }); setRenaming(false) }} style={{ display: 'flex', gap: 6, flex: 1 }}>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ flex: 1, padding: '4px 8px' }} />
+          <form onSubmit={(e) => { e.preventDefault(); Courses.updateModule(course.id, module.id, { title, cme_points: Number(cme) || 0 }); setRenaming(false) }} style={{ display: 'flex', gap: 6, flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ flex: 1, minWidth: 180, padding: '4px 8px' }} />
+            <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>CME</label>
+            <input type="number" min="0" step="0.5" value={cme} onChange={(e) => setCme(e.target.value)} style={{ width: 70, padding: '4px 8px' }} />
             <button className="btn btn-primary btn-sm" type="submit">Save</button>
           </form>
         ) : (
           <>
-            <span>{module.title}</span>
+            <span>{module.title}{Number(module.cme_points) > 0 ? ` · ${Number(module.cme_points)} CME` : ''}</span>
             <span style={{ display: 'flex', gap: 4 }}>
               <button className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => Courses.moveModule(course.id, module.id, -1)}>↑</button>
               <button className="btn btn-ghost btn-sm" disabled={index === total - 1} onClick={() => Courses.moveModule(course.id, module.id, 1)}>↓</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setTitle(module.title); setRenaming(true) }}>Rename</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setTitle(module.title); setCme(module.cme_points ?? 0); setRenaming(true) }}>Edit</button>
               <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete this module and its lessons?')) Courses.removeModule(course.id, module.id) }}>✕</button>
             </span>
           </>
@@ -178,26 +184,29 @@ function LessonRow({ course, module, lesson, index, total }) {
     </div>
   }
   return (
-    <div className="lesson-row">
+    <div className="lesson-row" style={lesson.hidden ? { opacity: 0.55 } : undefined}>
       <span className={`lesson-icon ${KIND_META[lesson.kind]?.[0] || ''}`}>{icon}</span>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600 }}>{lesson.title}</div>
-        <div className="meta" style={{ margin: 0 }}>{lesson.kind}{lesson.duration ? ` · ${lesson.duration}` : ''}{lesson.pages ? ` · ${lesson.pages}p` : ''}{lesson.questions ? ` · ${lesson.questions.length} question(s)` : ''}</div>
+        <div style={{ fontWeight: 600 }}>{lesson.title} {lesson.hidden && <span className="badge badge-red">hidden</span>}</div>
+        <div className="meta" style={{ margin: 0 }}>{lesson.kind}{lesson.duration ? ` · ${lesson.duration}` : ''}{lesson.pages ? ` · ${lesson.pages}p` : ''}{lesson.questions ? ` · ${lesson.questions.length} question(s)` : ''}{lesson.kind === 'quiz' && Number(lesson.pass_pct) > 0 ? ` · pass ≥ ${lesson.pass_pct}%` : ''}</div>
       </div>
       <span style={{ display: 'flex', gap: 4 }}>
         <button className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => Courses.moveLesson(course.id, module.id, lesson.id, -1)}>↑</button>
         <button className="btn btn-ghost btn-sm" disabled={index === total - 1} onClick={() => Courses.moveLesson(course.id, module.id, lesson.id, 1)}>↓</button>
+        <button className="btn btn-blue btn-sm" onClick={() => Courses.updateLesson(course.id, module.id, lesson.id, { hidden: !lesson.hidden })}>{lesson.hidden ? 'Show' : 'Hide'}</button>
         <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>Edit</button>
-        <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete this lesson?')) Courses.removeLesson(course.id, module.id, lesson.id) }}>✕</button>
+        <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete this lesson? (Tip: use Hide to take it offline without losing it.)')) Courses.removeLesson(course.id, module.id, lesson.id) }}>✕</button>
       </span>
     </div>
   )
 }
 
-function emptyQuestion() { return { q: '', options: ['', '', '', ''], answer: 0 } }
+function emptyQuestion() { return { q: '', options: ['', '', '', ''], answer: 0, feedback: '' } }
 
 function LessonForm({ course, module, lesson, onDone }) {
-  const [form, setForm] = useState(lesson || { title: '', kind: 'video', url: '', duration: '', pages: '', body: '', questions: [emptyQuestion()] })
+  const [form, setForm] = useState(lesson
+    ? { pass_pct: 60, ...lesson }
+    : { title: '', kind: 'video', url: '', duration: '', pages: '', body: '', pass_pct: 60, questions: [emptyQuestion()] })
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
   const setQuestion = (qi, patch) => setForm({ ...form, questions: form.questions.map((q, i) => i === qi ? { ...q, ...patch } : q) })
@@ -212,7 +221,10 @@ function LessonForm({ course, module, lesson, onDone }) {
     if (form.kind === 'video') { payload.url = form.url; payload.duration = form.duration }
     if (form.kind === 'pdf') { payload.url = form.url; payload.pages = form.pages ? Number(form.pages) : undefined }
     if (form.kind === 'article') { payload.body = form.body }
-    if (form.kind === 'quiz') { payload.questions = (form.questions || []).filter((q) => q.q.trim()) }
+    if (form.kind === 'quiz') {
+      payload.questions = (form.questions || []).filter((q) => q.q.trim())
+      payload.pass_pct = Math.min(100, Math.max(1, Number(form.pass_pct) || 60))
+    }
     if (lesson) Courses.updateLesson(course.id, module.id, lesson.id, payload)
     else Courses.addLesson(course.id, module.id, payload)
     onDone()
@@ -251,6 +263,12 @@ function LessonForm({ course, module, lesson, onDone }) {
 
       {form.kind === 'quiz' && (
         <div>
+          <div className="form-row" style={{ marginBottom: 10 }}>
+            <Field label="Passing score (%) — required for CME">
+              <input type="number" min="1" max="100" value={form.pass_pct} onChange={set('pass_pct')} />
+            </Field>
+            <div className="form-note" style={{ alignSelf: 'end', paddingBottom: 8 }}>Members must score at least this to complete the quiz and count it toward the certificate / CME points.</div>
+          </div>
           {(form.questions || []).map((q, qi) => (
             <div key={qi} className="card" style={{ marginBottom: 10, background: 'var(--bg)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -264,7 +282,8 @@ function LessonForm({ course, module, lesson, onDone }) {
                   <input value={opt} onChange={(e) => setOption(qi, oi, e.target.value)} placeholder={`Option ${oi + 1}`} />
                 </div>
               ))}
-              <p className="form-note">Select the radio next to the correct answer.</p>
+              <textarea rows={2} value={q.feedback || ''} onChange={(e) => setQuestion(qi, { feedback: e.target.value })} placeholder="Feedback / explanation shown after answering (optional but recommended for CME)" style={{ marginTop: 4 }} />
+              <p className="form-note">Select the radio next to the correct answer. The feedback appears to the member after they submit, whether right or wrong.</p>
             </div>
           ))}
           <button type="button" className="btn btn-ghost btn-sm" onClick={addQuestion}>+ Add question</button>

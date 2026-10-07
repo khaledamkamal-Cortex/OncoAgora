@@ -75,9 +75,24 @@ async function reloadCourses() { state.courses = await api.loadCourses(); persis
 // ---------------------------------------------------------------------------
 // Courses / modules / lessons
 // ---------------------------------------------------------------------------
+// Public views exclude hidden courses/lessons; the admin panel uses the raw ones.
+function withVisibleLessons(course) {
+  return {
+    ...course,
+    modules: (course.modules || [])
+      .map((m) => ({ ...m, lessons: m.lessons.filter((l) => !l.hidden) }))
+      .filter((m) => m.lessons.length > 0)
+  }
+}
+
 export const Courses = {
   all: () => state.courses,
   get: (id) => state.courses.find((c) => c.id === id),
+  visible: () => state.courses.filter((c) => !c.hidden).map(withVisibleLessons),
+  getVisible: (id) => {
+    const c = state.courses.find((x) => x.id === id)
+    return c && !c.hidden ? withVisibleLessons(c) : undefined
+  },
   lessons: (course) => (course?.modules || []).flatMap((m) => m.lessons.map((l) => ({ ...l, moduleId: m.id, moduleTitle: m.title }))),
 
   add: async (c) => {

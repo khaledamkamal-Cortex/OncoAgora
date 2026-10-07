@@ -9,7 +9,7 @@ const KIND_ICON = { video: ['li-video', '▶'], pdf: ['li-pdf', '📄'], article
 export default function Course() {
   useStore()
   const { courseId } = useParams()
-  const course = Courses.get(courseId)
+  const course = Courses.getVisible(courseId)
   const member = Members.current()
   const lessons = useMemo(() => (course ? Courses.lessons(course) : []), [course])
   const [currentId, setCurrentId] = useState(lessons[0]?.id)
@@ -29,6 +29,7 @@ export default function Course() {
         <div className="container">
           <Link to="/courses" style={{ color: '#fff', opacity: 0.85, fontSize: '0.9rem' }}>← All courses</Link>
           <h1 style={{ marginTop: 6 }}>{course.title}</h1>
+          {Number(course.cme_points) > 0 && <span className="badge badge-gold" style={{ marginTop: 6 }}>🎓 {Number(course.cme_points)} CME points on completion</span>}
           <div style={{ maxWidth: 420, marginTop: 10 }}>
             <div className="progress-bar" style={{ background: 'rgba(255,255,255,0.25)' }}><div style={{ width: `${completion}%` }} /></div>
             <div style={{ fontSize: '0.82rem', opacity: 0.9, marginTop: 4 }}>{completion}% complete</div>
@@ -38,12 +39,12 @@ export default function Course() {
 
       <section className="section">
         <div className="container">
-          {completion === 100 && member && <Certificate name={member.name} course={course.title} />}
+          {completion === 100 && member && <Certificate name={member.name} course={course.title} cme={Number(course.cme_points) || 0} />}
           <div className="lms-layout">
             <aside className="lms-sidebar">
               {course.modules.map((mod) => (
                 <div key={mod.id}>
-                  <div className="mod-title">{mod.title}</div>
+                  <div className="mod-title">{mod.title}{Number(mod.cme_points) > 0 ? ` · ${Number(mod.cme_points)} CME` : ''}</div>
                   {mod.lessons.map((l) => {
                     const done = member && Progress.isDone(member.email, course.id, l.id)
                     const [, icon] = KIND_ICON[l.kind] || ['', '•']
@@ -75,13 +76,16 @@ export default function Course() {
 function LessonView({ lesson, course, member, onDone }) {
   const done = member && Progress.isDone(member.email, course.id, lesson.id)
   const markDone = () => { if (member) Progress.toggle(member.email, course.id, lesson.id, !done) }
+  const isQuiz = lesson.kind === 'quiz'
 
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
         <h2 style={{ color: 'var(--purple-dark)', fontSize: '1.3rem' }}>{lesson.title}</h2>
         {member
-          ? <button className={`btn btn-sm ${done ? 'btn-ghost' : 'btn-gold'}`} onClick={markDone}>{done ? '✓ Completed — undo' : 'Mark as complete'}</button>
+          ? (isQuiz
+              ? (done ? <span className="badge badge-green">✓ Passed</span> : <span className="badge badge-gold">Pass the quiz to complete this lesson</span>)
+              : <button className={`btn btn-sm ${done ? 'btn-ghost' : 'btn-gold'}`} onClick={markDone}>{done ? '✓ Completed — undo' : 'Mark as complete'}</button>)
           : <Link to="/membership" className="btn btn-ghost btn-sm">Log in to track progress</Link>}
       </div>
 
@@ -99,12 +103,17 @@ function Quiz({ lesson, onPass }) {
   const [answers, setAnswers] = useState({})
   const [submitted, setSubmitted] = useState(false)
   const correct = lesson.questions.filter((q, i) => answers[i] === q.answer).length
-  const passed = correct === lesson.questions.length
+  const scorePct = Math.round((correct / lesson.questions.length) * 100)
+  const passPct = Number(lesson.pass_pct) > 0 ? Number(lesson.pass_pct) : 100
+  const passed = scorePct >= passPct
 
-  const submit = () => { setSubmitted(true); if (correct === lesson.questions.length) onPass() }
+  const submit = () => { setSubmitted(true); if (scorePct >= passPct) onPass() }
 
   return (
     <div>
+      <div className="alert alert-info" style={{ marginBottom: 16 }}>
+        Answer all {lesson.questions.length} question{lesson.questions.length > 1 ? 's' : ''}. Passing score: <b>{passPct}%</b>{passPct < 100 ? '' : ' (all correct)'} — required for course completion{Number(lesson.pass_pct) ? ' and CME credit' : ''}.
+      </div>
       {lesson.questions.map((q, qi) => (
         <div key={qi} style={{ marginBottom: 20 }}>
           <p style={{ fontWeight: 600, marginBottom: 10 }}>{qi + 1}. {q.q}</p>
@@ -120,19 +129,24 @@ function Quiz({ lesson, onPass }) {
               </div>
             )
           })}
+          {submitted && q.feedback && (
+            <div className="alert alert-info" style={{ marginTop: 8 }}>
+              {answers[qi] === q.answer ? '✓ Correct. ' : '✗ '}{q.feedback}
+            </div>
+          )}
         </div>
       ))}
       {!submitted
         ? <button className="btn btn-primary" onClick={submit} disabled={Object.keys(answers).length < lesson.questions.length}>Submit answers</button>
         : <div className={`alert ${passed ? 'alert-success' : 'alert-error'}`}>
-            You scored {correct} / {lesson.questions.length}. {passed ? 'Passed! Lesson marked complete.' : 'Review the highlighted answers and try again.'}
+            You scored {correct} / {lesson.questions.length} ({scorePct}%). {passed ? 'Passed! Lesson marked complete.' : `You need ${passPct}% to pass — review the feedback above and try again.`}
             {!passed && <button className="btn btn-ghost btn-sm" style={{ marginLeft: 12 }} onClick={() => { setSubmitted(false); setAnswers({}) }}>Retry</button>}
           </div>}
     </div>
   )
 }
 
-function Certificate({ name, course }) {
+function Certificate({ name, course, cme }) {
   return (
     <div style={{ marginBottom: 28 }}>
       <div className="certificate">
@@ -143,6 +157,7 @@ function Certificate({ name, course }) {
         <div className="cname">{name}</div>
         <p>has successfully completed the course</p>
         <h1 style={{ fontSize: '1.3rem' }}>{course}</h1>
+        {cme > 0 && <p style={{ marginTop: 10, fontWeight: 700, color: 'var(--purple-dark)' }}>{cme} CME point{cme === 1 ? '' : 's'} awarded</p>}
         <p style={{ color: 'var(--muted)', marginTop: 10 }}>Issued {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
       <div style={{ textAlign: 'center', marginTop: 14 }} className="no-print">

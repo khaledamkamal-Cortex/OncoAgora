@@ -90,8 +90,8 @@ export const db = {
   removeMember: (email) => supabase.from('members').delete().eq('email', email),
 
   // Courses
-  addCourse: (c) => supabase.from('courses').insert({ title: c.title, level: c.level, summary: c.summary, banner: c.banner, hours: c.hours, sort: 0 }),
-  updateCourse: (id, patch) => supabase.from('courses').update((({ title, level, summary, banner, hours }) => ({ title, level, summary, banner, hours }))(patch)).eq('id', id),
+  addCourse: (c) => supabase.from('courses').insert({ title: c.title, level: c.level, summary: c.summary, banner: c.banner, hours: c.hours, cme_points: c.cme_points || 0, sort: 0 }),
+  updateCourse: (id, patch) => supabase.from('courses').update(pick(patch, ['title', 'level', 'summary', 'banner', 'hours', 'cme_points', 'hidden'])).eq('id', id),
   removeCourse: (id) => supabase.from('courses').delete().eq('id', id),
 
   // Modules
@@ -99,7 +99,7 @@ export const db = {
     const n = await nextSort('modules', 'course_id', courseId)
     return supabase.from('modules').insert({ course_id: courseId, title, sort: n })
   },
-  updateModule: (id, patch) => supabase.from('modules').update({ title: patch.title }).eq('id', id),
+  updateModule: (id, patch) => supabase.from('modules').update(pick(patch, ['title', 'cme_points'])).eq('id', id),
   removeModule: (id) => supabase.from('modules').delete().eq('id', id),
   swapModuleSort: (a, b) => swapSort('modules', a, b),
 
@@ -114,13 +114,18 @@ export const db = {
 }
 
 // ---------------- helpers ----------------
+function pick(obj, keys) {
+  const out = {}
+  for (const k of keys) if (k in obj) out[k] = obj[k]
+  return out
+}
 function toLessonRow(l) {
-  const row = { title: l.title, kind: l.kind }
-  if ('url' in l) row.url = l.url
-  if ('duration' in l) row.duration = l.duration
-  if ('pages' in l) row.pages = l.pages
-  if ('body' in l) row.body = l.body
-  if ('questions' in l) row.questions = l.questions
+  // Only copy keys that are present, so a partial patch (e.g. { hidden: true })
+  // never nulls out the other columns.
+  const row = {}
+  for (const k of ['title', 'kind', 'url', 'duration', 'pages', 'body', 'questions', 'hidden', 'pass_pct']) {
+    if (k in l) row[k] = l[k]
+  }
   return row
 }
 async function nextSort(table, fk, fkVal) {

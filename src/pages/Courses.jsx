@@ -4,7 +4,7 @@ import { useStore } from '../lib/useStore'
 
 export default function CoursesPage() {
   useStore()
-  const courses = Courses.all()
+  const courses = Courses.visible()
   const member = Members.current()
 
   return (
@@ -30,8 +30,9 @@ export default function CoursesPage() {
               const completion = member ? Progress.courseCompletion(member.email, c) : 0
               return (
                 <Link key={c.id} to={`/courses/${c.id}`} className="card card-link" style={{ padding: 0, overflow: 'hidden' }}>
-                  <div style={{ height: 110, background: c.banner, display: 'flex', alignItems: 'flex-end', padding: 16 }}>
+                  <div style={{ height: 110, background: c.banner, display: 'flex', alignItems: 'flex-end', gap: 6, padding: 16 }}>
                     <span className="badge badge-gold">{c.level}</span>
+                    {Number(c.cme_points) > 0 && <span className="badge badge-green">🎓 {Number(c.cme_points)} CME</span>}
                   </div>
                   <div style={{ padding: 18 }}>
                     <h3>{c.title}</h3>

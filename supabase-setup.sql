@@ -29,6 +29,8 @@ create table if not exists courses (
   summary text,
   banner text,
   hours int,
+  cme_points numeric default 0,
+  hidden boolean default false,
   sort int default 0,
   created_at timestamptz default now()
 );
@@ -37,6 +39,7 @@ create table if not exists modules (
   id uuid primary key default gen_random_uuid(),
   course_id uuid references courses(id) on delete cascade,
   title text not null,
+  cme_points numeric default 0,
   sort int default 0
 );
 
@@ -49,9 +52,18 @@ create table if not exists lessons (
   body text,
   pages int,
   duration text,
-  questions jsonb,
+  questions jsonb,              -- quiz: [{q, options[], answer, feedback}]
+  pass_pct int,                 -- quiz passing score (%); null = all correct
+  hidden boolean default false,
   sort int default 0
 );
+
+-- Migration for databases created before CME/visibility support:
+alter table courses add column if not exists cme_points numeric default 0;
+alter table courses add column if not exists hidden boolean default false;
+alter table modules add column if not exists cme_points numeric default 0;
+alter table lessons add column if not exists hidden boolean default false;
+alter table lessons add column if not exists pass_pct int;
 
 -- ---------- LMS progress ----------
 create table if not exists progress (
