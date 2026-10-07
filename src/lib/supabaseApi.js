@@ -2,6 +2,18 @@
 // when Supabase is configured; otherwise it uses its localStorage path.
 import { supabase } from './supabase'
 
+// Translate raw Supabase auth errors into messages fit for members.
+function friendly(message) {
+  const msg = message || 'Something went wrong. Please try again.'
+  if (/rate limit/i.test(msg)) return 'Registration is temporarily busy (too many sign-ups at once). Please try again in about an hour — your details were not saved, so just register again.'
+  if (/already registered|already exists/i.test(msg)) return 'An account with this email already exists — switch to Login.'
+  if (/invalid login credentials/i.test(msg)) return 'Invalid email or password.'
+  if (/not confirmed/i.test(msg)) return 'Your email is not confirmed yet — please use the confirmation link sent to your inbox, then log in.'
+  if (/password should be/i.test(msg)) return 'Password is too short — please use at least 6 characters.'
+  if (/is invalid/i.test(msg) && /email/i.test(msg)) return 'That email address was not accepted — please double-check it.'
+  return msg
+}
+
 // ---------------- Courses (assembled into nested course objects) ----------------
 
 export async function loadCourses() {
@@ -30,14 +42,14 @@ export async function signUp(profile) {
     password: profile.password,
     options: { data: { name: profile.name, phone: profile.phone, grade: profile.grade, specialty: profile.specialty, institution: profile.institution } }
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(friendly(error.message))
   if (!data.session) return { pending: true, email: profile.email } // email confirmation required
   return fetchCurrentMember()
 }
 
 export async function signIn(email, password) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(friendly(error.message))
   return fetchCurrentMember()
 }
 
